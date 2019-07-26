@@ -653,6 +653,25 @@
     (assert-true (>= (length response) 0))
     (simple-close stream frame response)))
 
+;;; 5 Fragmentation
+
+(define-test case-5-1 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 45)
+    (declare (ignore connection))
+    (assert-equal 9 (frame-opcode frame))
+    (assert-equal :ping (frame-opcode-type frame))
+    (simple-close stream frame response)))
+
+
+(define-test case-5-2 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 46)
+    (declare (ignore connection))
+    (assert-equal 10 (frame-opcode frame))
+    (assert-equal :pong (frame-opcode-type frame))
+    (simple-close stream frame response)))
+
 
 ;;; Run the tests.
 
