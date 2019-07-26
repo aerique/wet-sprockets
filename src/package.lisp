@@ -6,7 +6,6 @@
 ;;; Package
 
 (defpackage :wet-sprockets
-  (:nicknames :wets)
   (:use :cl)
   (:export ;; globals
            :*listener-thread-name* :*frames-queue* :*poll-frequency*

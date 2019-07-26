@@ -228,7 +228,7 @@
 ;  (setf (flexi-streams:flexi-stream-external-format flexi-stream) :utf-8))
 
 
-;; FIXME no support for CLIENT=NIL
+;; XXX no support for CLIENT=NIL, i.e. server mode not supported
 (defun write-frame (stream opcode-keyword &key (client t) data)
   (let* ((octets         (if (equal opcode-keyword :text)
                              (babel:string-to-octets data)
@@ -291,7 +291,8 @@
 
 
 (defun write-close-frame (stream &optional status-code (client t))
-  (declare ((or nil keyword) status-code))
+  ;; FIXME barfs on NIL
+  ;(declare ((or nil keyword) status-code))
   (if status-code
       (let* ((number (keyword-to-status-code status-code))
              (bytes (vector (ash (logand #b1111111100000000 number) -8)
@@ -304,8 +305,10 @@
   (write-frame stream :ping :client client))
 
 
-(defun write-pong-frame (stream &optional (client t))
-  (write-frame stream :pong :client client))
+(defun write-pong-frame (stream &optional octets (client t))
+  (if octets
+      (write-frame stream :pong :data octets :client client)
+      (write-frame stream :pong :client client)))
 
 
 ;; XXX Shouldn't we convert the text to bytes here?
@@ -367,9 +370,24 @@
     (reverse frames)))
 
 
+(defun control-frame-p (frame)
+  (declare (frame frame))
+  (>= (frame-opcode frame) 8))
+
+
 (defun close-frame-p (frame)
   (declare (frame frame))
   (equal :close (frame-opcode-type frame)))
+
+
+(defun ping-frame-p (frame)
+  (declare (frame frame))
+  (equal :ping (frame-opcode-type frame)))
+
+
+(defun pong-frame-p (frame)
+  (declare (frame frame))
+  (equal :pong (frame-opcode-type frame)))
 
 
 (defun handle-close-frame (stream close-frame)
@@ -384,6 +402,29 @@
         (dbgmsg "• Close frame status code: ~S (~D).~%" status-code kw)
         (write-close-frame stream kw))
       (write-close-frame stream)))
+
+
+(defun validate-frame (stream frame)
+  (declare (frame frame))
+  (cond ;; Ping frames must be short than 126 bytes.
+        ((and (ping-frame-p frame)
+              (>= (frame-payload-length frame) 126))
+         (write-close-frame stream :protocol-error)
+         nil)
+        ;; Reserved bits must not be set.
+        ((or (frame-rsv1 frame) (frame-rsv2 frame) (frame-rsv3 frame))
+         (write-close-frame stream :protocol-error)
+         nil)
+        ;; Close on protocol errors.
+        ((equal :unknown (frame-opcode-type frame))
+         (write-close-frame stream :protocol-error)
+         nil)
+        ;; Control frames must not be fragmented.
+        ((and (control-frame-p frame)
+              (not (frame-fin frame)))
+         (write-close-frame stream :protocol-error)
+         nil)
+        (t t)))
 
 
 ;;; Example / Test Functions

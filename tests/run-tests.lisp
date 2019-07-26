@@ -8,7 +8,9 @@
 
 (format t "Loading WetSprockets...~%")
 (ql:quickload :wet-sprockets)
-(in-package :wet-sprockets)
+(rename-package :wet-sprockets :wet-sprockets
+                '(:ws))
+(in-package :ws)
 
 (use-package :lisp-unit)
 
@@ -40,24 +42,27 @@
   (simple-open (mkstr "runCase?case=" case-number "&agent=" *agent*)))
 
 
-(defun simple-close (stream response type)
-  (cond ((equal type :binary)
+(defun simple-close (stream frame response)
+  (unless (validate-frame stream frame)
+    (return-from simple-close))
+  (cond ((equal :binary (frame-opcode-type frame))
          (write-binary-frame stream response))
-        ((equal type :text)
+        ((equal :ping   (frame-opcode-type frame))
+         (write-pong-frame stream response))
+        ((equal :pong   (frame-opcode-type frame))
+         #| do nothing |#)
+        ((equal :text   (frame-opcode-type frame))
          (write-text-frame stream response))
         (t
-         (error "Unknown type for SIMPLE-CLOSE: ~S" type)))
+         (error "Unknown opcode-type for SIMPLE-CLOSE: ~S"
+                (frame-opcode-type frame))))
   (let ((frame (read-frame stream)))
     (assert-equal :close (frame-opcode-type frame))
     (when (close-frame-p frame)
-      (handle-close-frame stream frame)))
-  (update-reports))
+      (handle-close-frame stream frame))))
 
 
 ;;; Tests
-;;;
-;;; - (assert-false (btc-eur *exchange*))
-;;; - (assert-true (enough-btc-funds-p *exchange*))
 
 (define-test 00-get-case-count ()
   (multiple-value-bind (connection stream frame response)
@@ -77,7 +82,7 @@
     (assert-equal :text (frame-opcode-type frame))
     (assert-equal 0 (frame-payload-length frame))
     (assert-equal "" response)
-    (simple-close stream response (frame-opcode-type frame))))
+    (simple-close stream frame response)))
 
 
 (define-test case-1-1-2 ()
@@ -88,7 +93,7 @@
     (assert-equal :text (frame-opcode-type frame))
     (assert-equal 125 (frame-payload-length frame))
     (assert-equal "*****************************************************************************************************************************" response)
-    (simple-close stream response (frame-opcode-type frame))))
+    (simple-close stream frame response)))
 
 
 (define-test case-1-1-3 ()
@@ -99,7 +104,7 @@
     (assert-equal :text (frame-opcode-type frame))
     (assert-equal 126 (frame-payload-length frame))
     (assert-equal 126 (length response))
-    (simple-close stream response (frame-opcode-type frame))))
+    (simple-close stream frame response)))
 
 
 (define-test case-1-1-4 ()
@@ -110,7 +115,7 @@
     (assert-equal :text (frame-opcode-type frame))
     (assert-equal 127 (frame-payload-length frame))
     (assert-equal 127 (length response))
-    (simple-close stream response (frame-opcode-type frame))))
+    (simple-close stream frame response)))
 
 
 (define-test case-1-1-5 ()
@@ -121,7 +126,7 @@
     (assert-equal :text (frame-opcode-type frame))
     (assert-equal 128 (frame-payload-length frame))
     (assert-equal 128 (length response))
-    (simple-close stream response (frame-opcode-type frame))))
+    (simple-close stream frame response)))
 
 
 (define-test case-1-1-6 ()
@@ -132,7 +137,7 @@
     (assert-equal :text (frame-opcode-type frame))
     (assert-equal 65535 (frame-payload-length frame))
     (assert-equal 65535 (length response))
-    (simple-close stream response (frame-opcode-type frame))))
+    (simple-close stream frame response)))
 
 
 (define-test case-1-1-7 ()
@@ -143,7 +148,7 @@
     (assert-equal :text (frame-opcode-type frame))
     (assert-equal 65536 (frame-payload-length frame))
     (assert-equal 65536 (length response))
-    (simple-close stream response (frame-opcode-type frame))))
+    (simple-close stream frame response)))
 
 
 (define-test case-1-1-8 ()
@@ -154,7 +159,7 @@
     (assert-equal :text (frame-opcode-type frame))
     (assert-equal 65536 (frame-payload-length frame))
     (assert-equal 65536 (length response))
-    (simple-close stream response (frame-opcode-type frame))))
+    (simple-close stream frame response)))
 
 ;;; 1.2 Binary Messages
 
@@ -165,8 +170,8 @@
     (assert-equal 2 (frame-opcode frame))
     (assert-equal :binary (frame-opcode-type frame))
     (assert-equal 0 (frame-payload-length frame))
-    (assert-equalp #() response)
-    (simple-close stream response (frame-opcode-type frame))))
+    (assert-equal 0 (length response))
+    (simple-close stream frame response)))
 
 
 (define-test case-1-2-2 ()
@@ -176,17 +181,8 @@
     (assert-equal 2 (frame-opcode frame))
     (assert-equal :binary (frame-opcode-type frame))
     (assert-equal 125 (frame-payload-length frame))
-    (assert-equalp #(254 254 254 254 254 254 254 254 254 254 254 254 254 254
-                    254 254 254 254 254 254 254 254 254 254 254 254 254 254
-                    254 254 254 254 254 254 254 254 254 254 254 254 254 254
-                    254 254 254 254 254 254 254 254 254 254 254 254 254 254
-                    254 254 254 254 254 254 254 254 254 254 254 254 254 254
-                    254 254 254 254 254 254 254 254 254 254 254 254 254 254
-                    254 254 254 254 254 254 254 254 254 254 254 254 254 254
-                    254 254 254 254 254 254 254 254 254 254 254 254 254 254
-                    254 254 254 254 254 254 254 254 254 254 254 254 254)
-                   response)
-    (simple-close stream response (frame-opcode-type frame))))
+    (assert-equal 125 (length response))
+    (simple-close stream frame response)))
 
 
 (define-test case-1-2-3 ()
@@ -197,7 +193,7 @@
     (assert-equal :binary (frame-opcode-type frame))
     (assert-equal 126 (frame-payload-length frame))
     (assert-equal 126 (length response))
-    (simple-close stream response (frame-opcode-type frame))))
+    (simple-close stream frame response)))
 
 
 (define-test case-1-2-4 ()
@@ -208,7 +204,7 @@
     (assert-equal :binary (frame-opcode-type frame))
     (assert-equal 127 (frame-payload-length frame))
     (assert-equal 127 (length response))
-    (simple-close stream response (frame-opcode-type frame))))
+    (simple-close stream frame response)))
 
 
 (define-test case-1-2-5 ()
@@ -219,7 +215,7 @@
     (assert-equal :binary (frame-opcode-type frame))
     (assert-equal 128 (frame-payload-length frame))
     (assert-equal 128 (length response))
-    (simple-close stream response (frame-opcode-type frame))))
+    (simple-close stream frame response)))
 
 
 (define-test case-1-2-6 ()
@@ -230,7 +226,7 @@
     (assert-equal :binary (frame-opcode-type frame))
     (assert-equal 65535 (frame-payload-length frame))
     (assert-equal 65535 (length response))
-    (simple-close stream response (frame-opcode-type frame))))
+    (simple-close stream frame response)))
 
 
 (define-test case-1-2-7 ()
@@ -241,7 +237,7 @@
     (assert-equal :binary (frame-opcode-type frame))
     (assert-equal 65536 (frame-payload-length frame))
     (assert-equal 65536 (length response))
-    (simple-close stream response (frame-opcode-type frame))))
+    (simple-close stream frame response)))
 
 
 (define-test case-1-2-8 ()
@@ -252,7 +248,410 @@
     (assert-equal :binary (frame-opcode-type frame))
     (assert-equal 65536 (frame-payload-length frame))
     (assert-equal 65536 (length response))
-    (simple-close stream response (frame-opcode-type frame))))
+    (simple-close stream frame response)))
+
+;;; 2 Pings / Pongs
+
+(define-test case-2-01 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 17)
+    (declare (ignore connection))
+    (assert-equal 9 (frame-opcode frame))
+    (assert-equal :ping (frame-opcode-type frame))
+    (assert-equal 0 (frame-payload-length frame))
+    (assert-equalp #() response)
+    (simple-close stream frame response)))
+
+
+(define-test case-2-02 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 18)
+    (declare (ignore connection))
+    (assert-equal 9 (frame-opcode frame))
+    (assert-equal :ping (frame-opcode-type frame))
+    (assert-equal 13 (frame-payload-length frame))
+    (assert-equalp #(72 101 108 108 111 44 32 119 111 114 108 100 33) response)
+    (simple-close stream frame response)))
+
+
+(define-test case-2-03 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 19)
+    (declare (ignore connection))
+    (assert-equal 9 (frame-opcode frame))
+    (assert-equal :ping (frame-opcode-type frame))
+    (assert-equal 8 (frame-payload-length frame))
+    (assert-equalp #(0 255 254 253 252 251 0 255) response)
+    (simple-close stream frame response)))
+
+
+(define-test case-2-04 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 20)
+    (declare (ignore connection))
+    (assert-equal 9 (frame-opcode frame))
+    (assert-equal :ping (frame-opcode-type frame))
+    (assert-equal 125 (frame-payload-length frame))
+    (assert-equal 125 (length response))
+    (simple-close stream frame response)))
+
+
+(define-test case-2-05 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 21)
+    (declare (ignore connection))
+    (assert-equal 9 (frame-opcode frame))
+    (assert-equal :ping (frame-opcode-type frame))
+    (assert-equal 126 (frame-payload-length frame))
+    (assert-equal 126 (length response))
+    (simple-close stream frame response)))
+
+
+(define-test case-2-06 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 22)
+    (declare (ignore connection))
+    (assert-equal 9 (frame-opcode frame))
+    (assert-equal :ping (frame-opcode-type frame))
+    (assert-equal 125 (frame-payload-length frame))
+    (assert-equal 125 (length response))
+    (simple-close stream frame response)))
+
+
+(define-test case-2-07 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 23)
+    (declare (ignore connection))
+    (assert-equal 10 (frame-opcode frame))
+    (assert-equal :pong (frame-opcode-type frame))
+    (assert-equal 0 (frame-payload-length frame))
+    (assert-equalp #() response)
+    (simple-close stream frame response)))
+
+
+(define-test case-2-08 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 24)
+    (declare (ignore connection))
+    (assert-equal 10 (frame-opcode frame))
+    (assert-equal :pong (frame-opcode-type frame))
+    (assert-false (= (frame-payload-length frame) 0))
+    (assert-false (equalp #() response))
+    (simple-close stream frame response)))
+
+
+(define-test case-2-09 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 25)
+    (declare (ignore connection))
+    (assert-equal 10 (frame-opcode frame))
+    (assert-equal :pong (frame-opcode-type frame))
+    (assert-false (= (frame-payload-length frame) 0))
+    (assert-false (equalp #() response))
+    (setf frame    (read-frame stream)
+          response (coerce (frame-payload-data frame) 'vector))
+    (assert-equal 9 (frame-opcode frame))
+    (assert-equal :ping (frame-opcode-type frame))
+    (assert-false (= (frame-payload-length frame) 0))
+    (assert-false (equalp #() response))
+    (simple-close stream frame response)))
+
+
+(define-test case-2-10 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 26)
+    (declare (ignore connection))
+    (loop repeat 9
+          do (assert-equal 9 (frame-opcode frame))
+             (assert-equal :ping (frame-opcode-type frame))
+             (assert-false (= (frame-payload-length frame) 0))
+             (assert-false (equalp #() response))
+             (write-pong-frame stream response)
+             (setf frame    (read-frame stream)
+                   response (coerce (frame-payload-data frame) 'vector)))
+    (simple-close stream frame response)))
+
+
+(define-test case-2-11 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 27)
+    (declare (ignore connection))
+    (loop repeat 9
+          do (assert-equal 9 (frame-opcode frame))
+             (assert-equal :ping (frame-opcode-type frame))
+             (assert-false (= (frame-payload-length frame) 0))
+             (assert-false (equalp #() response))
+             (write-pong-frame stream response)
+             (setf frame    (read-frame stream)
+                   response (coerce (frame-payload-data frame) 'vector)))
+    (simple-close stream frame response)))
+
+;;; 3 Reserved Bits
+
+(define-test case-3-1 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 28)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (assert-false (frame-rsv1 frame))
+    (assert-false (frame-rsv2 frame))
+    (assert-true  (frame-rsv3 frame))
+    (simple-close stream frame response)))
+
+
+(define-test case-3-2 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 29)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (write-text-frame stream response)
+    (setf frame    (read-frame stream)
+          response (payload-data-to-string (frame-payload-data frame)))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (assert-false (frame-rsv1 frame))
+    (assert-true  (frame-rsv2 frame))
+    (assert-false (frame-rsv3 frame))
+    (simple-close stream frame response)))
+
+
+(define-test case-3-3 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 30)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (write-text-frame stream response)
+    (setf frame    (read-frame stream)
+          response (payload-data-to-string (frame-payload-data frame)))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (assert-false (frame-rsv1 frame))
+    (assert-true  (frame-rsv2 frame))
+    (assert-true  (frame-rsv3 frame))
+    (simple-close stream frame response)))
+
+
+(define-test case-3-4 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 31)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (write-text-frame stream response)
+    (setf frame    (read-frame stream)
+          response (payload-data-to-string (frame-payload-data frame)))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (assert-true  (frame-rsv1 frame))
+    (assert-false (frame-rsv2 frame))
+    (assert-false (frame-rsv3 frame))
+    (simple-close stream frame response)))
+
+
+(define-test case-3-5 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 32)
+    (declare (ignore connection))
+    (assert-equal 2 (frame-opcode frame))
+    (assert-equal :binary (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (assert-true  (frame-rsv1 frame))
+    (assert-false (frame-rsv2 frame))
+    (assert-true  (frame-rsv3 frame))
+    (simple-close stream frame response)))
+
+
+;; Skipped, actual test and case description differ.
+;; The frame type send by the testsuite is :BINARY while it should be :PING.
+;(define-test case-3-6 ()
+;  (multiple-value-bind (connection stream frame response)
+;      (simple-run-case 33)
+;    (declare (ignore connection))
+;    (let ((*print-pretty* nil)) (format t "~&~S~%" frame))
+;    (assert-equal 9 (frame-opcode frame))
+;    (assert-equal :ping (frame-opcode-type frame))
+;    (assert-true  (frame-rsv1 frame))
+;    (assert-true  (frame-rsv2 frame))
+;    (assert-false (frame-rsv3 frame))
+;    (simple-close stream frame response)))
+
+
+(define-test case-3-7 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 34)
+    (declare (ignore connection))
+    (assert-equal 8 (frame-opcode frame))
+    (assert-equal :close (frame-opcode-type frame))
+    (assert-true (frame-rsv1 frame))
+    (assert-true (frame-rsv2 frame))
+    (assert-true (frame-rsv3 frame))
+    (simple-close stream frame response)))
+
+;;; 4 Opcodes
+
+;;; 4.1 Non-control Opcodes
+
+(define-test case-4-1-1 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 35)
+    (declare (ignore connection))
+    (assert-equal 3 (frame-opcode frame))
+    (assert-equal :unknown (frame-opcode-type frame))
+    (simple-close stream frame response)))
+
+
+(define-test case-4-1-2 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 36)
+    (declare (ignore connection))
+    (assert-equal 4 (frame-opcode frame))
+    (assert-equal :unknown (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (simple-close stream frame response)))
+
+
+(define-test case-4-1-3 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 37)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (write-text-frame stream response)
+    (setf frame    (read-frame stream)
+          response (payload-data-to-string (frame-payload-data frame)))
+    (assert-equal 5 (frame-opcode frame))
+    (assert-equal :unknown (frame-opcode-type frame))
+    (simple-close stream frame response)))
+
+
+(define-test case-4-1-4 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 38)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (write-text-frame stream response)
+    (setf frame    (read-frame stream)
+          response (payload-data-to-string (frame-payload-data frame)))
+    (assert-equal 6 (frame-opcode frame))
+    (assert-equal :unknown (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (simple-close stream frame response)))
+
+
+(define-test case-4-1-5 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 39)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (write-text-frame stream response)
+    (setf frame    (read-frame stream)
+          response (payload-data-to-string (frame-payload-data frame)))
+    (assert-equal 7 (frame-opcode frame))
+    (assert-equal :unknown (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (simple-close stream frame response)))
+
+;;; 4.2 Control Opcodes
+
+(define-test case-4-2-1 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 40)
+    (declare (ignore connection))
+    (assert-equal 11 (frame-opcode frame))
+    (assert-equal :unknown (frame-opcode-type frame))
+    (simple-close stream frame response)))
+
+
+(define-test case-4-2-2 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 41)
+    (declare (ignore connection))
+    (assert-equal 12 (frame-opcode frame))
+    (assert-equal :unknown (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (simple-close stream frame response)))
+
+
+(define-test case-4-2-3 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 42)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (write-text-frame stream response)
+    (setf frame    (read-frame stream)
+          response (payload-data-to-string (frame-payload-data frame)))
+    (assert-equal 13 (frame-opcode frame))
+    (assert-equal :unknown (frame-opcode-type frame))
+    (simple-close stream frame response)))
+
+
+(define-test case-4-2-4 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 43)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (write-text-frame stream response)
+    (setf frame    (read-frame stream)
+          response (payload-data-to-string (frame-payload-data frame)))
+    (assert-equal 14 (frame-opcode frame))
+    (assert-equal :unknown (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (simple-close stream frame response)))
+
+
+(define-test case-4-2-5 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 44)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (write-text-frame stream response)
+    (setf frame    (read-frame stream)
+          response (payload-data-to-string (frame-payload-data frame)))
+    (assert-equal 15 (frame-opcode frame))
+    (assert-equal :unknown (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (simple-close stream frame response)))
 
 
 ;;; Run the tests.
@@ -260,4 +659,5 @@
 (format t "Running Autobahn Testsuite...~%")
 (run-tests)
 (format t "~&")
+(update-reports)
 (cl-user::quit)
