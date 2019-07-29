@@ -425,9 +425,3 @@
          (write-close-frame stream :protocol-error)
          nil)
         (t t)))
-
-
-;;; Example / Test Functions
-
-(defun connect-to-echo ()
-  (connect "http://echo.websocket.org/"))

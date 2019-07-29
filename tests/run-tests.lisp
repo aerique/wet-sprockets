@@ -8,8 +8,7 @@
 
 (format t "Loading WetSprockets...~%")
 (ql:quickload :wet-sprockets)
-(rename-package :wet-sprockets :wet-sprockets
-                '(:ws))
+(rename-package :wet-sprockets :wet-sprockets '(:ws))
 (in-package :ws)
 
 (use-package :lisp-unit)
@@ -23,6 +22,10 @@
 
 
 ;;; Functions
+;;;
+;;; (loop do (if (listen stm)
+;;;              (format t ">>> ~S~%" (read-frame stm))
+;;;              (sleep 0.01)))
 
 (defun update-reports ()
   (connect (mkstr "http://localhost:9001/updateReports?agent=" *agent*)))
