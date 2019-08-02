@@ -361,18 +361,31 @@
                    (progn
                      (setf frame (read-frame stream))
                      (case (frame-opcode-type frame)
-                       (:ping (dbgmsg "• Received ping, sending pong.~%")
-                              (write-pong-frame stream))
-                       (:text (spammsg "• Received text frame, length ~D.~%"
-                                       (frame-payload-length frame))
-                              (sb-thread:with-mutex (*frames-queue-mutex*)
-                                (push frame *frames-queue*)))
-                       (otherwise (dbgmsg "• Unhandled frame: ~S (~D).~%"
-                                          (frame-opcode-type frame)
-                                          (frame-opcode frame))
-                                  (logmsg "--- unhandled~%~S~%~S~%---~%"
-                                          frame (payload-data-to-string
-                                                 (frame-payload-data frame))))))
+                       (:binary
+                         (spammsg "• Received binary frame, length ~D.~%"
+                                  (frame-payload-length frame))
+                         (sb-thread:with-mutex (*frames-queue-mutex*)
+                           (push frame *frames-queue*)))
+                       (:continuation
+                         (spammsg "• Received binary frame, length ~D.~%"
+                                  (frame-payload-length frame))
+                         (sb-thread:with-mutex (*frames-queue-mutex*)
+                           (push frame *frames-queue*)))
+                       (:ping
+                         (dbgmsg "• Received ping, sending pong.~%")
+                         (write-pong-frame stream))
+                       (:text
+                         (spammsg "• Received text frame, length ~D.~%"
+                                  (frame-payload-length frame))
+                         (sb-thread:with-mutex (*frames-queue-mutex*)
+                           (push frame *frames-queue*)))
+                       (otherwise
+                         (dbgmsg "• Unhandled frame: ~S (~D).~%"
+                                 (frame-opcode-type frame)
+                                 (frame-opcode frame))
+                         (logmsg "--- unhandled~%~S~%~S~%---~%"
+                                 frame (payload-data-to-string
+                                                (frame-payload-data frame))))))
                    (sleep *poll-frequency*)))
     (t (condition) (logmsg "Error in listener: ~S~%" condition)
                    (setf *connection* nil))))
