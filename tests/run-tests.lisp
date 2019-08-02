@@ -660,7 +660,7 @@
 
 ;;; 5 Fragmentation
 
-(define-test case-5-1 ()
+(define-test case-5-01 ()
   (multiple-value-bind (connection stream frame response)
       (simple-run-case 45)
     (declare (ignore connection))
@@ -669,7 +669,7 @@
     (simple-close stream frame response)))
 
 
-(define-test case-5-2 ()
+(define-test case-5-02 ()
   (multiple-value-bind (connection stream frame response)
       (simple-run-case 46)
     (declare (ignore connection))
@@ -677,6 +677,209 @@
     (assert-equal :pong (frame-opcode-type frame))
     (simple-close stream frame response)))
 
+
+(define-test case-5-03 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 47)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (multiple-value-bind (payload-data frames)
+        (read-fragmented-frames stream frame)
+      (declare (ignore frames))
+      (simple-close stream frame (payload-data-to-string payload-data)))))
+    ;; This would be simpler, but the above is perhaps more clear.
+    ;(simple-close stream frame (payload-data-to-string
+    ;                            (read-fragmented-frames stream frame)))))
+
+
+(define-test case-5-04 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 48)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (simple-close stream frame (payload-data-to-string
+                                (read-fragmented-frames stream frame)))))
+
+
+(define-test case-5-05 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 49)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (simple-close stream frame (payload-data-to-string
+                                (read-fragmented-frames stream frame)))))
+
+
+(define-test case-5-06 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 50)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (simple-close stream frame (payload-data-to-string
+                                (read-fragmented-frames stream frame)))))
+
+
+(define-test case-5-07 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 51)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (simple-close stream frame (payload-data-to-string
+                                (read-fragmented-frames stream frame)))))
+
+
+(define-test case-5-08 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 52)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (simple-close stream frame (payload-data-to-string
+                                (read-fragmented-frames stream frame)))))
+
+
+;; XXX this should be used as an example for LISTENER
+(define-test case-5-09 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 53)
+    (declare (ignore connection response))
+    (assert-equal 0 (frame-opcode frame))
+    (assert-equal :continuation (frame-opcode-type frame))
+    (write-close-frame stream :protocol-error)))
+
+
+(define-test case-5-10 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 54)
+    (declare (ignore connection response))
+    (assert-equal 0 (frame-opcode frame))
+    (assert-equal :continuation (frame-opcode-type frame))
+    (write-close-frame stream :protocol-error)))
+
+
+(define-test case-5-11 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 55)
+    (declare (ignore connection response))
+    (assert-equal 0 (frame-opcode frame))
+    (assert-equal :continuation (frame-opcode-type frame))
+    (write-close-frame stream :protocol-error)))
+
+
+(define-test case-5-12 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 56)
+    (declare (ignore connection response))
+    (assert-equal 0 (frame-opcode frame))
+    (assert-equal :continuation (frame-opcode-type frame))
+    (write-close-frame stream :protocol-error)))
+
+
+(define-test case-5-13 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 57)
+    (declare (ignore connection response))
+    (assert-equal 0 (frame-opcode frame))
+    (assert-equal :continuation (frame-opcode-type frame))
+    (write-close-frame stream :protocol-error)))
+
+
+(define-test case-5-14 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 58)
+    (declare (ignore connection response))
+    (assert-equal 0 (frame-opcode frame))
+    (assert-equal :continuation (frame-opcode-type frame))
+    (write-close-frame stream :protocol-error)))
+
+
+(define-test case-5-15 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 59)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (write-text-frame stream (payload-data-to-string
+                              (read-fragmented-frames stream frame)))
+    (setf frame (read-frame stream))
+    (assert-equal 0 (frame-opcode frame))
+    (assert-equal :continuation (frame-opcode-type frame))
+    (write-close-frame stream :protocol-error)))
+
+
+(define-test case-5-16 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 60)
+    (declare (ignore connection response))
+    (assert-equal 0 (frame-opcode frame))
+    (assert-equal :continuation (frame-opcode-type frame))
+    (write-close-frame stream :protocol-error)))
+
+
+(define-test case-5-17 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 61)
+    (declare (ignore connection response))
+    (assert-equal 0 (frame-opcode frame))
+    (assert-equal :continuation (frame-opcode-type frame))
+    (write-close-frame stream :protocol-error)))
+
+
+(define-test case-5-18 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 62)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-true (>= (frame-payload-length frame) 0))
+    (assert-true (>= (length response) 0))
+    (simple-close stream frame (payload-data-to-string
+                                (read-fragmented-frames stream frame)))))
+
+
+;; Commented out for slowing down test run.
+;(define-test case-5-19 ()
+;  (multiple-value-bind (connection stream frame response)
+;      (simple-run-case 63)
+;    (declare (ignore connection))
+;    (assert-equal 1 (frame-opcode frame))
+;    (assert-equal :text (frame-opcode-type frame))
+;    (assert-true (>= (frame-payload-length frame) 0))
+;    (assert-true (>= (length response) 0))
+;    (simple-close stream frame (payload-data-to-string
+;                                (read-fragmented-frames stream frame)))))
+
+
+;; Commented out for slowing down test run.
+;(define-test case-5-20 ()
+;  (multiple-value-bind (connection stream frame response)
+;      (simple-run-case 64)
+;    (declare (ignore connection))
+;    (assert-equal 1 (frame-opcode frame))
+;    (assert-equal :text (frame-opcode-type frame))
+;    (assert-true (>= (frame-payload-length frame) 0))
+;    (assert-true (>= (length response) 0))
+;    (simple-close stream frame (payload-data-to-string
+;                                (read-fragmented-frames stream frame)))))
 
 ;;; Run the tests.
 
