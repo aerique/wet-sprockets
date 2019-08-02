@@ -881,6 +881,95 @@
 ;    (simple-close stream frame (payload-data-to-string
 ;                                (read-fragmented-frames stream frame)))))
 
+;;; 6 UTF-8 Handling
+
+;;; 6.1 Valid UTF-8 with zero payload fragments
+
+(define-test case-6-1-1 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 65)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-equal 0 (frame-payload-length frame))
+    (assert-equal 0 (length response))
+    (simple-close stream frame response)))
+
+
+(define-test case-6-1-2 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 66)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-equal 0 (frame-payload-length frame))
+    (assert-equal 0 (length response))
+    (simple-close stream frame (payload-data-to-string
+                                (read-fragmented-frames stream frame)))))
+
+
+(define-test case-6-1-3 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 67)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-equal 0 (frame-payload-length frame))
+    (assert-equal 0 (length response))
+    (simple-close stream frame (payload-data-to-string
+                                (read-fragmented-frames stream frame)))))
+
+;;; 6.2 Valid UTF-8 unfragmented, fragmented on code-points and within
+;;;     code-points
+
+(define-test case-6-2-1 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 68)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-equal 29 (frame-payload-length frame))  ; 29 bytes
+    (assert-equal 22 (length response))             ; 22 characters
+    (simple-close stream frame response)))
+
+
+(define-test case-6-2-2 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 69)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-equal 15 (frame-payload-length frame))
+    (assert-equal 11 (length response))
+    (simple-close stream frame (payload-data-to-string
+                                (read-fragmented-frames stream frame)))))
+
+
+(define-test case-6-2-3 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 70)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-equal 1 (frame-payload-length frame))
+    (assert-equal 1 (length response))
+    (simple-close stream frame (payload-data-to-string
+                                (read-fragmented-frames stream frame)))))
+
+
+(define-test case-6-2-4 ()
+  (multiple-value-bind (connection stream frame response)
+      (simple-run-case 71)
+    (declare (ignore connection))
+    (assert-equal 1 (frame-opcode frame))
+    (assert-equal :text (frame-opcode-type frame))
+    (assert-equal 1 (frame-payload-length frame))
+    (assert-equal 1 (length response))
+    (simple-close stream frame (payload-data-to-string
+                                (read-fragmented-frames stream frame)))))
+
+
+
 ;;; Run the tests.
 
 (format t "Running Autobahn Testsuite...~%")
