@@ -224,6 +224,41 @@
                 :payload-data   payload-data)))
 
 
+;; XXX I'm not sure how we should handle fragmented frames.  This function
+;;     is for the Autobahn testsuite but should be generally useful.  However
+;;     LISTENER should be extended to store continuation frames and then it
+;;     should be ok with a helper function to concatenate the payloads.
+;;     Once that is done we should start using the listener in the Autobahn
+;;     test cases.
+;; XXX This should actually closely map to LISTENER except it returns the
+;;     payloads and frames.  Try to combine them.
+(defun read-fragmented-frames (stream initial-frame)
+  "Returns (VALUES payload frames)."
+  (let ((frames (list initial-frame))
+        (payload-data (frame-payload-data initial-frame)))
+    (when (frame-fin initial-frame)
+      (errmsg "Initial frame not fragmented, aborting.~%~S~%" initial-frame)
+      (return-from read-fragmented-frames))
+    (loop for next-frame = (read-frame stream)
+          for next-type  = (frame-opcode-type next-frame)
+          do (case next-type
+               (:ping
+                 (write-pong-frame stream
+                             (coerce (frame-payload-data next-frame) 'vector)))
+               (:continuation
+                 (push next-frame frames)
+                 ;; XXX maybe start with array and do vector-push-extend?
+                 (setf payload-data (concatenate 'vector payload-data
+                                             (frame-payload-data next-frame)))
+                 (when (frame-fin next-frame)
+                   (loop-finish)))
+               (otherwise
+                 (write-close-frame stream :protocol-error)
+                 (return-from read-fragmented-frames))))
+    (values payload-data
+            (reverse frames))))
+
+
 ;(defun set-utf-8 (flexi-stream)
 ;  (setf (flexi-streams:flexi-stream-external-format flexi-stream) :utf-8))
 
