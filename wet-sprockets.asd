@@ -4,7 +4,7 @@
 
 (defsystem :wet-sprockets
   :version "0.0.1-alpha"
-  :description "A websockets library for Common Lisp"
+  :description "A WebSockets library for Common Lisp"
   :author "Erik Winkels <aerique@xs4all.nl>"
   :components ((:module "src"
                         :components ((:file "package")

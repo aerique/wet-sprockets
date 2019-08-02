@@ -19,7 +19,7 @@ Before running `bin/run-tests.sh` the Autobahn testsuite should be running:
 ## Notes on Tests
 
 Some Autobahn tests are harder to properly test.  For example: 2.10,
-2.11, 3.1, 3.2, 3.3.
+2.11, 3.1, 3.2, 3.3, 5.9 to 5.20 (more or less).
 
 We're testing at a pretty low level and these tests would need a proper
 event loop running.  We could start a listener since it has to handle
@@ -29,6 +29,7 @@ For now, these tests look kinda stupid.
 
 ### Known Issues
 
+- fragmenting support is clunky
 - only client mode is currently supported
 
 ### Resources

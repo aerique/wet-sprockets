@@ -254,6 +254,7 @@
            (vector-push-extend (logior (if mask #b10000000 0)
                                        127)
                                bytes)
+           ;;; FIXME better formatting
            (vector-push-extend (ash (logand #b1111111100000000000000000000000000000000000000000000000000000000 payload-length) -56) bytes)
            (vector-push-extend (ash (logand #b0000000011111111000000000000000000000000000000000000000000000000 payload-length) -48) bytes)
            (vector-push-extend (ash (logand #b0000000000000000111111110000000000000000000000000000000000000000 payload-length) -40) bytes)
@@ -317,7 +318,7 @@
 
 
 ;; FIXME Handle close frames properly here (i.e. send return close frame
-;;       according to spec).
+;;       according to spec (this would mean using VALIDATE-FRAME)).
 (defun listener (stream)
   (handler-case
       (loop with frame = nil
